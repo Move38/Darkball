@@ -62,19 +62,6 @@ void setup() {
   setValueSentOnAllFaces(MAGIC_VALUE);
 }
 
-int memcmp(const void *s1, const void *s2, unsigned n)
-{
-  if (n != 0) {
-    const unsigned char *p1 = s1, *p2 = s2;
-
-    do {
-      if (*p1++ != *p2++)
-        return (*--p1 - *--p2);
-    } while (--n != 0);
-  }
-  return (0);
-}
-
 
 void loop() {
 
@@ -82,6 +69,18 @@ void loop() {
   if (sendBall >= 0) { //if i have the ball
     if (millis() - lastMillis > ball[0]) { //wait ball speed
       if (superMode) {
+
+        // DRAW CONNECTIONS
+        FOREACH_FACE(f) {
+          if (hasNeigbhorAtFace[f]) {
+            setColorOnFace(makeColorHSB(DEFAULT_HUE, 255, 255), f);
+          }
+          else {
+            setColorOnFace(OFF, f);
+          }
+        }
+
+        // DRAW SUPERBALL
         if (ball[2] % 4 == 0) {
           setColorOnFace( OFF ,  sendBall  ); //turn off lights every few tiles'
           // This handles the sending face
@@ -209,6 +208,8 @@ void loop() {
       if (hp > 0) {
         if (count < hp + lastNeighbor + 1) {
           if (hasBall && missed == true) {
+
+            // TODO: ANIMATE PADDLE MODE
             if (superMode)setColorOnFace( WHITE, count % FACE_COUNT );
             else setColorOnFace( CYAN, count % FACE_COUNT );
           }
@@ -233,34 +234,48 @@ void loop() {
     spinAnimation(110);
   }
   else { //path
-    FOREACH_FACE(f) {
-      if (hasNeigbhorAtFace[f]) {
-        // If the ball is hit perfectly, have the trail sparkle
-        // TODO: Only do this when ball speed is XXX
-        // after the ball passes, leave a trail of color/sparkle
-        long timeSinceBall = millis() - timeBallLastOnFace[f];
-        word exhaust_trail_duration = 2* (100-ball[0]) * EXHAUST_TRAIL_DURATION / 100;
-        
-        if (timeSinceBall > exhaust_trail_duration) {
-          timeSinceBall = exhaust_trail_duration;
-        }
-        byte hueShift = MAX_HUE_SHIFT - map(timeSinceBall, 0, exhaust_trail_duration, 0, MAX_HUE_SHIFT);
-        byte hue = DEFAULT_HUE - hueShift;  // the byte wraps this with no problems
-        byte bri = 255; // leave the brightness up,  could be worth experimenting with for sparkle
-        byte sat;
-        if(ball[0] < 10 && timeSinceBall < 300) // only sparkle when the ball is traveling at a speed <10 that's fast
-          sat = 255 - 80*random(3);//hueShift/20);
-        else
-          sat = 255;
-        setColorOnFace( makeColorHSB( hue, sat , bri ) , f );//path color
-      }
-      else {
-        setColorOnFace(OFF, f);
-      }
-      if (!showColorOnFaceTimer[f].isExpired()) {
-        setColorOnFace(OFF, f);
-      }
 
+    if ( superMode ) {
+      // DRAW THE CONNECTIONS DURING SUPER MODE
+      if (sendBall == -1) {
+        setColor(OFF);
+        FOREACH_FACE(f) {
+          if (hasNeigbhorAtFace[f]) {
+            setColorOnFace(makeColorHSB(DEFAULT_HUE, 255, 255), f);
+          }
+        }
+      }
+    }
+    else {
+      FOREACH_FACE(f) {
+        if (hasNeigbhorAtFace[f]) {
+          // If the ball is hit perfectly, have the trail sparkle
+          // TODO: Only do this when ball speed is XXX
+          // after the ball passes, leave a trail of color/sparkle
+          long timeSinceBall = millis() - timeBallLastOnFace[f];
+          word exhaust_trail_duration = 2 * (100 - ball[0]) * EXHAUST_TRAIL_DURATION / 100;
+
+          if (timeSinceBall > exhaust_trail_duration) {
+            timeSinceBall = exhaust_trail_duration;
+          }
+          byte hueShift = MAX_HUE_SHIFT - map(timeSinceBall, 0, exhaust_trail_duration, 0, MAX_HUE_SHIFT);
+          byte hue = DEFAULT_HUE - hueShift;  // the byte wraps this with no problems
+          byte bri = 255; // leave the brightness up,  could be worth experimenting with for sparkle
+          byte sat;
+          if (ball[0] < 10 && timeSinceBall < 300) // only sparkle when the ball is traveling at a speed <10 that's fast
+            sat = 255 - 80 * random(3); //hueShift/20);
+          else
+            sat = 255;
+          setColorOnFace( makeColorHSB( hue, sat , bri ) , f );//path color
+        }
+        else {
+          setColorOnFace(OFF, f);
+        }
+        if (!showColorOnFaceTimer[f].isExpired()) {
+          setColorOnFace(OFF, f);
+        }
+
+      }
     }
   }
 
