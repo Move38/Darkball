@@ -69,20 +69,8 @@ void loop() {
   if (sendBall >= 0) { //if i have the ball
     if (millis() - lastMillis > ball[0]) { //wait ball speed
       if (superMode) {
-
-        // DRAW CONNECTIONS
-        FOREACH_FACE(f) {
-          if (hasNeigbhorAtFace[f]) {
-            setColorOnFace(makeColorHSB(DEFAULT_HUE, 255, 255), f);
-          }
-          else {
-            setColorOnFace(OFF, f);
-          }
-        }
-
-        // DRAW SUPERBALL
+        // Pass
         if (ball[2] % 4 == 0) {
-          setColorOnFace( OFF ,  sendBall  ); //turn off lights every few tiles'
           // This handles the sending face
           showColorOnFaceTimer[sendBall].set( SHOW_COLOR_TIME_MS ); //set face color
           timeBallLastOnFace[sendBall] = millis();
@@ -90,7 +78,6 @@ void loop() {
         ball[2]++;
       }
       else {
-        setColorOnFace( OFF ,  sendBall  ); //turn off lights
         // This handles the sending face
         showColorOnFaceTimer[sendBall].set( SHOW_COLOR_TIME_MS ); //set face color
         timeBallLastOnFace[sendBall] = millis();
@@ -118,56 +105,52 @@ void loop() {
 
       const byte *datagramPayload = getDatagramOnFace(f);
 
-      {
-        // This is the datagram we are looking for!
-        //update ball
-        ball[0] = datagramPayload[0]; //get ball speed
-        ball[1] = datagramPayload[1]; //get ball superMode
-        ball[2] = datagramPayload[2]; //get ball superMode counter
-        superMode = ball[1];
 
-        setColorOnFace( OFF , f ); // draw dark ball
-        // TODO: is this how the dark ball is actually drawn?
-        // This seems to handle the receiving face
-        showColorOnFaceTimer[f].set( SHOW_COLOR_TIME_MS ); //set face color
-        timeBallLastOnFace[f] = millis();
-        lastMillis = millis();
+      // This is the datagram we are looking for!
+      //update ball
+      ball[0] = datagramPayload[0]; //get ball speed
+      ball[1] = datagramPayload[1]; //get ball superMode
+      ball[2] = datagramPayload[2]; //get ball superMode counter
+      superMode = ball[1];
 
-        int avalableNeighboringFaces[FACE_COUNT];
-        int count = 0;
 
-        //find next available face
-        FOREACH_FACE(nf) { //cycle through faces
-          if (f != nf) { //don't check face that just received data
-            if (hasNeigbhorAtFace[nf]) { //if face is connected
-              avalableNeighboringFaces[count] = nf;//set face to send ball
-              count++;
-            }
+      showColorOnFaceTimer[f].set( SHOW_COLOR_TIME_MS ); //set face color
+      timeBallLastOnFace[f] = millis();
+      lastMillis = millis();
+
+      // START
+      int avalableNeighboringFaces[FACE_COUNT];
+      int count = 0;
+
+      //find next available face
+      FOREACH_FACE(nf) { //cycle through faces
+        if (f != nf) { //don't check face that just received data
+          if (hasNeigbhorAtFace[nf]) { //if face is connected
+            avalableNeighboringFaces[count] = nf;//set face to send ball
+            count++;
           }
         }
-
-        if (count > 0) sendBall = avalableNeighboringFaces[int(random(count - 1))]; //if there's a neighbor, send the ball there
-
-        if (neighborCount == 1) { //received the ball and is the end
-          hasBall = true;
-          lastReceivedBall = millis();
-          //check if swing is early or late
-          if (swung ) {
-            if ( millis() - lastSwing < ballResponseRange ) { //if i have the ball and i hit it in time
-              shoot((millis() - lastSwing) / float(ballResponseRange));
-            }
-          }
-          swung = false;
-        }
-        else hasBall = false;
-
       }
 
+      if (count > 0) sendBall = avalableNeighboringFaces[int(random(count - 1))]; //if there's a neighbor, send the ball there
+
+      if (neighborCount == 1) { //received the ball and is the end
+        hasBall = true;
+        lastReceivedBall = millis();
+        //check if swing is early or late
+        if (swung ) {
+          if ( millis() - lastSwing < ballResponseRange ) { //if i have the ball and i hit it in time
+            shoot((millis() - lastSwing) / float(ballResponseRange));
+          }
+        }
+        swung = false;
+      }
+      else hasBall = false;
+      // END
 
       // We are done with the datagram, so free up the buffer so we can get another on this face
       markDatagramReadOnFace( f );
     }
-
 
     //path
     if ( !isValueReceivedOnFaceExpired( f ) ) {
@@ -233,22 +216,15 @@ void loop() {
   } else if (neighborCount == 0 && endAnimCount == 0) { //blinks not connected to anything and not showing animation
     spinAnimation(110);
   }
-  else { //path
+  else { //DRAW DARKBALL AND DARKBALL TRACKS
 
-    if ( superMode ) {
-      // DRAW THE CONNECTIONS DURING SUPER MODE
-      if (sendBall == -1) {
-        setColor(OFF);
-        FOREACH_FACE(f) {
-          if (hasNeigbhorAtFace[f]) {
-            setColorOnFace(makeColorHSB(DEFAULT_HUE, 255, 255), f);
-          }
+    FOREACH_FACE(f) {
+      if (hasNeigbhorAtFace[f]) {
+
+        if (superMode) {
+          setColorOnFace(makeColorHSB( DEFAULT_HUE, 255 , 255 ) , f ); // path color
         }
-      }
-    }
-    else {
-      FOREACH_FACE(f) {
-        if (hasNeigbhorAtFace[f]) {
+        else {
           // If the ball is hit perfectly, have the trail sparkle
           // TODO: Only do this when ball speed is XXX
           // after the ball passes, leave a trail of color/sparkle
@@ -266,16 +242,27 @@ void loop() {
             sat = 255 - 80 * random(3); //hueShift/20);
           else
             sat = 255;
+
           setColorOnFace( makeColorHSB( hue, sat , bri ) , f );//path color
+        }
+
+      }
+      else {  // No Neighbor = Outer borders = OFF
+        setColorOnFace(OFF, f);
+      }
+
+      // DRAW DARKBALL
+      if (!showColorOnFaceTimer[f].isExpired()) {
+
+        if (superMode) {
+          // if superMode don't turn off all of the time...
+          if (ball[2] % 3 == 0) setColorOnFace(OFF, f);
         }
         else {
           setColorOnFace(OFF, f);
         }
-        if (!showColorOnFaceTimer[f].isExpired()) {
-          setColorOnFace(OFF, f);
-        }
-
       }
+
     }
   }
 
@@ -389,7 +376,7 @@ void shoot(float ballSpeed) {//0-1
   FOREACH_FACE(f) {
     ball[0] = byte(s); //random speed
     ball[1] = superMode;
-    ball[2] = 0; //superMode when to show counter
+    ball[2] = 1 + random(2); //superMode when to show counter
     sendDatagramOnFace( &ball , sizeof( ball ) , f );
   }
   missed = false;
