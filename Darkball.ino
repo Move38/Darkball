@@ -69,19 +69,17 @@ void loop() {
   if (sendBall >= 0) { //if i have the ball
     if (millis() - lastMillis > ball[0]) { //wait ball speed
       if (superMode) {
-        // Pass
-        if (ball[2] % 4 == 0) {
-          // This handles the sending face
-          showColorOnFaceTimer[sendBall].set( SHOW_COLOR_TIME_MS ); //set face color
-          timeBallLastOnFace[sendBall] = millis();
-        }
-        ball[2]++;
+
+        showColorOnFaceTimer[sendBall].set( SHOW_COLOR_TIME_MS ); //set face color
+        timeBallLastOnFace[sendBall] = millis();
+
       }
       else {
         // This handles the sending face
         showColorOnFaceTimer[sendBall].set( SHOW_COLOR_TIME_MS ); //set face color
         timeBallLastOnFace[sendBall] = millis();
       }
+      //ball[2]++;
       sendDatagramOnFace( &ball , sizeof( ball ) , sendBall ); //send ball
       // TODO: is this how the dark ball is actually drawn?
 
@@ -112,7 +110,7 @@ void loop() {
       ball[1] = datagramPayload[1]; //get ball superMode
       ball[2] = datagramPayload[2]; //get ball superMode counter
       superMode = ball[1];
-
+      ball[2]++;
 
       showColorOnFaceTimer[f].set( SHOW_COLOR_TIME_MS ); //set face color
       timeBallLastOnFace[f] = millis();
@@ -253,14 +251,19 @@ void loop() {
 
       // DRAW DARKBALL
       if (!showColorOnFaceTimer[f].isExpired()) {
-
         if (superMode) {
           // if superMode don't turn off all of the time...
-          if (ball[2] % 3 == 0) setColorOnFace(OFF, f);
+          if (ball[2] % 3 == 0)
+          {
+            setColorOnFace(OFF, f);
+          }
+
         }
         else {
           setColorOnFace(OFF, f);
         }
+
+
       }
 
     }
