@@ -180,36 +180,7 @@ void loop() {
   //set colors
   //endpoint
   if (neighborCount == 1) {
-    int count = lastNeighbor + 1; //light up from "top" (connection to path)
-    lastWasEndpoint = millis();
-
-    FOREACH_FACE(f) {
-      //endpoint normal state shows points
-
-      if (hp > 0) {
-        if (count < hp + lastNeighbor + 1) {
-          if (hasBall && missed == true) {
-
-            // TODO: ANIMATE PADDLE MODE
-            if (superMode)setColorOnFace( WHITE, count % FACE_COUNT );
-            else setColorOnFace( CYAN, count % FACE_COUNT );
-          }
-          else {
-            if (swung && hasBall == false) setColorOnFace( dim( GREEN, 60), count % FACE_COUNT );
-            else setColorOnFace( GREEN, count % FACE_COUNT );
-          }
-        }
-        else {
-          if (swung && hasBall == false)  setColorOnFace( dim( RED, 60), count % FACE_COUNT );
-          else setColorOnFace( RED, count % FACE_COUNT );
-        }
-
-        count++;
-      }
-
-
-
-    }
+    drawPaddle();
 
   } else if (neighborCount == 0 && endAnimCount == 0) { //blinks not connected to anything and not showing animation
     spinAnimation(110);
@@ -340,18 +311,20 @@ Timer animStepTimer;
 int animCount = 0;
 
 void spinAnimation(int delayTime) {
-  if (animStepTimer.isExpired()) {
-    //
-    FOREACH_FACE(f) {
-      byte dist = (f + 6 - (animCount % FACE_COUNT)) % FACE_COUNT;
-      // reverse it:
-      dist = 6 - dist;
-      setColorOnFace( makeColorHSB(DEFAULT_HUE - (dist * MAX_HUE_SHIFT / 6), 255, 255 - 40 * dist), f);
-    }
-    setColorOnFace( OFF, animCount % FACE_COUNT );
-    animCount++;
-    animStepTimer.set( delayTime );
-  }
+  // Show health, then transition to heal
+  drawPaddle();
+//  if (animStepTimer.isExpired()) {
+//    //
+//    FOREACH_FACE(f) {
+//      byte dist = (f + 6 - (animCount % FACE_COUNT)) % FACE_COUNT;
+//      // reverse it:
+//      dist = 6 - dist;
+//      setColorOnFace( makeColorHSB(DEFAULT_HUE - (dist * MAX_HUE_SHIFT / 6), 255, 255 - 40 * dist), f);
+//    }
+//    setColorOnFace( OFF, animCount % FACE_COUNT );
+//    animCount++;
+//    animStepTimer.set( delayTime );
+//  }
 }
 
 void randomAnimation(Color c, int delayTime) {
@@ -369,6 +342,43 @@ void swingAnimation(Color c, int delayTime) {
     animCount++;
     setColorOnFace( OFF, animCount % FACE_COUNT );
     animStepTimer.set( delayTime );
+  }
+}
+
+void drawPaddle() {
+  byte count = lastNeighbor + 1; //light up from "top" (connection to path)
+  
+  if(!isAlone()) lastWasEndpoint = millis();
+
+  FOREACH_FACE(f) {
+    //endpoint normal state shows points
+
+    if (hp > 0) {
+      if (count < hp + lastNeighbor + 1) {
+        Color healthColor;
+        if(superMode) {
+          if(hasBall) healthColor = makeColorHSB(random(255),100,255);
+          else healthColor = WHITE;
+        }
+        else healthColor = GREEN;        
+        // swing and a miss -> dim green faces        
+        if (swung && hasBall == false) setColorOnFace( dim( healthColor, 60), count % FACE_COUNT );
+        // show number of health
+        else setColorOnFace( healthColor, count % FACE_COUNT );
+      }
+      else {
+        // swing and a miss -> dim red faces
+        if (swung && hasBall == false)  setColorOnFace( dim( RED, 60), count % FACE_COUNT );
+        // show number of damage
+        else setColorOnFace( RED, count % FACE_COUNT );
+      }
+
+      if (hasBall && !isAlone()) {
+        setColorOnFace(OFF, (millis() / 100) % 6); 
+      }
+
+      count++;
+    }
   }
 }
 
